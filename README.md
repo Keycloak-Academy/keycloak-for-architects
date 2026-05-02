@@ -63,9 +63,3 @@ Labs that include application code use the `source-initial/` / `source-complete/
 | Confidential clients | ASP.NET Core MVC |
 | Public clients (SPA) | React + `oidc-client-ts` |
 | Infrastructure | Docker Compose |
-
----
-
-## Support
-
-- Keycloak documentation: [https://www.keycloak.org/documentation](https://www.keycloak.org/documentation)
