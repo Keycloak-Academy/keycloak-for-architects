@@ -1,0 +1,314 @@
+{
+  "info": {
+    "_postman_id": "collection-simplified-001",
+    "name": "OAuth Authorization: Audience, Roles & Scopes (Simplified)",
+    "description": "Simplified exploration collection for Lab 5.\n\n**Before running:**\n1. Select the 'OAuth Authorization' environment\n2. Fill in `realm`, `trading_app_service_client_secret`\n3. Run one request from **0 — Token Acquisition** to populate `access_token`\n\nFor the full automated test suite (with role/scope variants), use `oauth-authorization.postman_collection.json`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "access_token",  "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "0 — Token Acquisition",
+      "description": "Run ONE of these requests depending on the grant type you want to demonstrate. Both store the resulting access token in the `access_token` collection variable used by all subsequent requests.\n\n- **ROPC** — requires Direct Access Grants ON for `banking-app-spa` in Keycloak. Set `username` and `password` in the environment. Also stores `refresh_token`.\n- **Client Credentials** — requires Service Accounts Enabled on `trading-app-service` in Keycloak.\n- **Refresh token** — exchanges the stored `refresh_token` for a new `access_token`. Run ROPC first.",
+      "item": [
+
+        {
+          "name": "Get token — ROPC (password grant)",
+          "description": "Resource Owner Password Credentials grant. Exchanges a user's credentials directly for an access token.\n\nSet `username` and `password` in the environment (e.g. customer-user / customer, trader-user / trader, admin-user / admin).\n\nRequirement: Direct Access Grants must be ON for `banking-app-spa` in Keycloak.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id",  "value": "{{banking_app_client_id}}" },
+                { "key": "username",   "value": "{{username}}" },
+                { "key": "password",   "value": "{{password}}" },
+                { "key": "scope",      "value": "openid profile email" }
+              ]
+            },
+            "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"access_token\", json.access_token);",
+                  "if (json.refresh_token) {",
+                  "  pm.collectionVariables.set(\"refresh_token\", json.refresh_token);",
+                  "  console.log(\"refresh_token set\");",
+                  "}",
+                  "console.log(\"access_token set via ROPC (\", json.access_token.substring(0,20), \"...\");"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "Get token — Client Credentials (M2M)",
+          "description": "Client Credentials grant. The client authenticates directly — no user involved. Used for machine-to-machine (M2M) scenarios.\n\nRequirement: Service Accounts Enabled on `trading-app-service` in Keycloak.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type",    "value": "client_credentials" },
+                { "key": "client_id",     "value": "{{trading_app_service_client_id}}" },
+                { "key": "client_secret", "value": "{{trading_app_service_client_secret}}" }
+              ]
+            },
+            "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"access_token\", json.access_token);",
+                  "console.log(\"access_token set via client_credentials (\", json.access_token.substring(0,20), \"...\");"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "Refresh token",
+          "description": "Exchanges the `refresh_token` (stored by the ROPC request) for a new access token. Updates `access_token` and `refresh_token` with the new values.\n\nRequirement: run the ROPC request first so that `refresh_token` is populated. Client Credentials grant does not issue refresh tokens.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type",    "value": "refresh_token" },
+                { "key": "client_id",     "value": "{{banking_app_client_id}}" },
+                { "key": "refresh_token", "value": "{{refresh_token}}" }
+              ]
+            },
+            "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"access_token\", json.access_token);",
+                  "if (json.refresh_token) {",
+                  "  pm.collectionVariables.set(\"refresh_token\", json.refresh_token);",
+                  "}",
+                  "console.log(\"access_token refreshed (\", json.access_token.substring(0,20), \"...\");"
+                ]
+              }
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "API Calls",
+      "description": "One generic request per API endpoint. All use `Bearer {{access_token}}` — run the appropriate token acquisition request first depending on the role you want to test.",
+      "item": [
+
+        {
+          "name": "GET /api/info",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/info"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "GET /api/stocks",
+          "description": "Requires a valid token with `aud: core-banking-api`. No role check — any authenticated user or M2M token works.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/stocks"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"stocks array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('stocks');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "GET /api/accounts",
+          "description": "Requires the `customer` realm role. Use ROPC with customer-user (username=customer-user, password=customer).",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/accounts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"accounts array present\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('accounts');",
+                  "  pm.expect(json.accounts).to.be.an('array').with.lengthOf.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "GET /api/transactions/12345",
+          "description": "Requires the `customer` realm role. Use ROPC with customer-user.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/transactions/12345"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"transactions array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('transactions');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "GET /api/portfolio/repartition",
+          "description": "Requires the `trader` client role on `trading-app`. Use ROPC with trader-user (username=trader-user, password=trader).",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/portfolio/repartition"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"portfolioRepartition present\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('portfolioRepartition');",
+                  "  pm.expect(json).to.have.property('totalValue');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "GET /api/users",
+          "description": "Requires the `admin` realm role. Use ROPC with admin-user (username=admin-user, password=admin).",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"users array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('users');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "GET /api/balances",
+          "description": "Requires BOTH the `customer` realm role AND the `read:accounts` scope. Use ROPC with customer-user and scope 'openid profile email read:accounts'. `banking-app-spa` must have `read:accounts` assigned as a client scope in Keycloak.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"balances object present\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('balances');",
+                  "  pm.expect(json.balances).to.have.property('checking');",
+                  "  pm.expect(json.balances).to.have.property('savings');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+
+      ]
+    }
+
+  ]
+}

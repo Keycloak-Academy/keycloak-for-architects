@@ -1,0 +1,13 @@
+{
+  "folders": [
+    { "path": "core-banking-api", "name": "Core Banking API (.NET)" },
+    { "path": "banking-app",      "name": "Banking App (React)" },
+    { "path": "trading-app",      "name": "Trading App (.NET)" }
+  ],
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csdevkit",
+      "dbaeumer.vscode-eslint"
+    ]
+  }
+}

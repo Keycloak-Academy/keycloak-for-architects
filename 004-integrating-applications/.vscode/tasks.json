@@ -1,0 +1,79 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "initial: core-banking-api",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": { "cwd": "${workspaceFolder}/source-initial/core-banking-api" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "initial: banking-app",
+      "type": "shell",
+      "command": "npm install --silent && npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/source-initial/banking-app",
+        "shell": { "executable": "cmd.exe", "args": ["/c"] }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "initial: trading-app",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": { "cwd": "${workspaceFolder}/source-initial/trading-app" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start All (initial)",
+      "dependsOn": [
+        "initial: core-banking-api",
+        "initial: banking-app",
+        "initial: trading-app"
+      ],
+      "dependsOrder": "parallel",
+      "group": "build"
+    },
+    {
+      "label": "complete: core-banking-api",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": { "cwd": "${workspaceFolder}/source-complete/core-banking-api" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "complete: banking-app",
+      "type": "shell",
+      "command": "npm install --silent && npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/source-complete/banking-app",
+        "shell": { "executable": "cmd.exe", "args": ["/c"] }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "complete: trading-app",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": { "cwd": "${workspaceFolder}/source-complete/trading-app" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start All (complete)",
+      "dependsOn": [
+        "complete: core-banking-api",
+        "complete: banking-app",
+        "complete: trading-app"
+      ],
+      "dependsOrder": "parallel",
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

@@ -1,0 +1,763 @@
+{
+  "info": {
+    "_postman_id": "collection-001",
+    "name": "OAuth Authorization: Audience, Roles & Scopes",
+    "description": "Complete verification suite for Lab 5.\n\n**Before running:**\n1. Select the 'OAuth Authorization' environment\n2. Fill in `realm`, `trading_app_client_secret`, and `trading_app_service_client_secret`\n3. Run **one** request from folder **0 — Token Acquisition** to populate `access_token`:\n   - Use **ROPC** for user-context tests (set `username` / `password` in the environment)\n   - Use **Client Credentials** for M2M / service account tests\n\n**Folder map:**\n- `0 — Token Acquisition` — fetches a token (ROPC or client_credentials) into `access_token`\n- `Part 1 — Audience` — validates aud claim enforcement (run after Step 1.1)\n- `Part 2 — Roles` — validates role-based endpoint protection (run after Step 2.2)\n- `Part 3 — Scopes` — validates read:accounts scope gate (run after Step 3.1)\n- `Part 4 — Full Scope Allowed` — validates least-privilege token scoping (run after Step 4.x)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "access_token",  "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "0 — Token Acquisition",
+      "description": "Run ONE of these requests depending on the grant type you want to demonstrate. Both store the resulting access token in the `access_token` collection variable used by all subsequent requests.\n\n- **ROPC** — requires Direct Access Grants ON for `banking-app-spa` in Keycloak. Set `username` and `password` in the environment. Also stores `refresh_token`.\n- **Client Credentials** — requires Service Accounts Enabled on `trading-app-service` in Keycloak.\n- **Refresh token** — exchanges the stored `refresh_token` for a new `access_token`. Run ROPC first.",
+      "item": [
+
+        {
+          "name": "Get token — ROPC (password grant)",
+          "description": "Resource Owner Password Credentials grant. Exchanges a user's credentials directly for an access token.\n\nSet `username` and `password` in the environment (e.g. customer-user / customer, trader-user / trader, admin-user / admin).\n\nRequirement: Direct Access Grants must be ON for `banking-app-spa` in Keycloak.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id",  "value": "{{banking_app_client_id}}" },
+                { "key": "username",   "value": "{{username}}" },
+                { "key": "password",   "value": "{{password}}" },
+                { "key": "scope",      "value": "openid profile email" }
+              ]
+            },
+            "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"access_token\", json.access_token);",
+                  "if (json.refresh_token) {",
+                  "  pm.collectionVariables.set(\"refresh_token\", json.refresh_token);",
+                  "  console.log(\"refresh_token set\");",
+                  "}",
+                  "console.log(\"access_token set via ROPC (\", json.access_token.substring(0,20), \"...)\");"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "Get token — Client Credentials (M2M)",
+          "description": "Client Credentials grant. The client authenticates directly — no user involved. Used for machine-to-machine (M2M) scenarios.\n\nRequirement: Service Accounts Enabled on `trading-app-service` in Keycloak.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type",    "value": "client_credentials" },
+                { "key": "client_id",     "value": "{{trading_app_service_client_id}}" },
+                { "key": "client_secret", "value": "{{trading_app_service_client_secret}}" }
+              ]
+            },
+            "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"access_token\", json.access_token);",
+                  "console.log(\"access_token set via client_credentials (\", json.access_token.substring(0,20), \"...)\");"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "Refresh token",
+          "description": "Exchanges the `refresh_token` (stored by the ROPC request) for a new access token. Updates `access_token` and `refresh_token` with the new values.\n\nRequirement: run the ROPC request first so that `refresh_token` is populated. Client Credentials grant does not issue refresh tokens.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type",    "value": "refresh_token" },
+                { "key": "client_id",     "value": "{{banking_app_client_id}}" },
+                { "key": "refresh_token", "value": "{{refresh_token}}" }
+              ]
+            },
+            "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"access_token\", json.access_token);",
+                  "if (json.refresh_token) {",
+                  "  pm.collectionVariables.set(\"refresh_token\", json.refresh_token);",
+                  "}",
+                  "console.log(\"access_token refreshed (\", json.access_token.substring(0,20), \"...)\");"
+                ]
+              }
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Part 1 — Audience Validation",
+      "description": "Run after Step 1.1 (audience mapper added to banking-app-spa and trading-app) and Step 1.2 (ValidateAudience = true in core-banking-api).\n\nKey concept: the API rejects tokens that do not include 'core-banking-api' in the aud claim.",
+      "item": [
+
+        {
+          "name": "1.1 GET /api/info — no token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{api_url}}/api/info"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"401 Unauthorized (no token)\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "1.2 GET /api/info — token (aud = core-banking-api) → 200",
+          "description": "Token from banking-app-spa after the audience mapper is configured (Step 1.1). The aud claim must include 'core-banking-api'.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/info"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK — audience accepted\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "1.3 GET /api/stocks — token (aud = core-banking-api) → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/stocks"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK — audience accepted\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"stocks array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('stocks');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "1.4 GET /api/stocks — service token BEFORE audience mapper → 401",
+          "description": "⚠️ Run this BEFORE configuring the audience mapper on trading-app-service (Step 2 of Realm Setup). Acquire a client_credentials token first (folder 0). After the mapper is added the service token will carry the correct aud and this returns 200.\n\nIf you have already configured the mapper, this request will return 200 — that is the expected final state.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/stocks"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const status = pm.response.code;",
+                  "if (status === 401) {",
+                  "  pm.test(\"401 — service token missing aud (mapper not yet configured)\", () => pm.expect(status).to.equal(401));",
+                  "} else if (status === 200) {",
+                  "  pm.test(\"200 — audience mapper already configured (expected final state)\", () => pm.expect(status).to.equal(200));",
+                  "} else {",
+                  "  pm.test(\"Unexpected status: \" + status, () => pm.expect(status).to.be.oneOf([200, 401]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Part 2 — Role-Based Access Control",
+      "description": "Run after Step 2.1 (realm_access.roles mapped to ClaimTypes.Role) and Step 2.2 (role-protected endpoints added to core-banking-api).\n\nEndpoints covered:\n  GET /api/accounts          → requires customer role\n  GET /api/transactions/:id  → requires customer role\n  GET /api/portfolio/repartition → requires trader client role\n  GET /api/stocks            → requires only a valid token\n  GET /api/users             → requires admin role\n\nFor each request, acquire the appropriate token via folder 0 first.",
+      "item": [
+
+        {
+          "name": "Accounts — /api/accounts",
+          "item": [
+            {
+              "name": "2.1 GET /api/accounts — no token → 401",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{api_url}}/api/accounts"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"401 Unauthorized (no token)\", () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.2 GET /api/accounts — customer token → 200",
+              "description": "Acquire a ROPC token for customer-user (username=customer-user, password=customer) before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/accounts"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                      "pm.test(\"accounts array present\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('accounts');",
+                      "  pm.expect(json.accounts).to.be.an('array').with.lengthOf.above(0);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.3 GET /api/accounts — trader token → 403 (no customer role)",
+              "description": "Acquire a ROPC token for trader-user (username=trader-user, password=trader) before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/accounts"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));",
+                      "pm.test(\"detail = Required role: customer\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.detail).to.equal('Required role: customer');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Transactions — /api/transactions/:accountId",
+          "item": [
+            {
+              "name": "2.4 GET /api/transactions/12345 — customer token → 200",
+              "description": "Acquire a ROPC token for customer-user before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/transactions/12345"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                      "pm.test(\"transactions array present\", () => {",
+                      "  pm.expect(pm.response.json()).to.have.property('transactions');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.5 GET /api/transactions/12345 — trader token → 403 (no customer role)",
+              "description": "Acquire a ROPC token for trader-user before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/transactions/12345"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));",
+                      "pm.test(\"detail = Required role: customer\", () => {",
+                      "  pm.expect(pm.response.json().detail).to.equal('Required role: customer');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Stocks — /api/stocks",
+          "item": [
+            {
+              "name": "2.6 GET /api/stocks — any valid token → 200",
+              "description": "/api/stocks only requires a valid token — no role check. Acquire any ROPC or client_credentials token.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/stocks"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                      "pm.test(\"stocks array present\", () => {",
+                      "  pm.expect(pm.response.json()).to.have.property('stocks');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.7 GET /api/stocks — no token → 401",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{api_url}}/api/stocks"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"401 Unauthorized (no token)\", () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.8 GET /api/stocks — service token (M2M client_credentials) → 200",
+              "description": "Acquire a client_credentials token (folder 0) before running. Verifies machine-to-machine access with no user identity.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/stocks"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"200 OK — M2M service token accepted\", () => pm.response.to.have.status(200));",
+                      "pm.test(\"stocks array present\", () => {",
+                      "  pm.expect(pm.response.json()).to.have.property('stocks');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Portfolio — /api/portfolio/repartition",
+          "item": [
+            {
+              "name": "2.9 GET /api/portfolio/repartition — customer token → 403 (no trader role)",
+              "description": "Acquire a ROPC token for customer-user before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/portfolio/repartition"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));",
+                      "pm.test(\"detail = Required role: trader\", () => {",
+                      "  pm.expect(pm.response.json().detail).to.equal('Required role: trader');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.10 GET /api/portfolio/repartition — trader token (client role) → 200",
+              "description": "Acquire a ROPC token for trader-user (username=trader-user, password=trader) before running. trader-user has the 'trader' CLIENT role on trading-app. The role is mapped from resource_access[\"trading-app\"].roles in Step 2.1.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/portfolio/repartition"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"200 OK — trader client role accepted\", () => pm.response.to.have.status(200));",
+                      "pm.test(\"portfolioRepartition present\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('portfolioRepartition');",
+                      "  pm.expect(json).to.have.property('totalValue');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Users — /api/users",
+          "item": [
+            {
+              "name": "2.11 GET /api/users — admin token → 200",
+              "description": "Acquire a ROPC token for admin-user (username=admin-user, password=admin) before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/users"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                      "pm.test(\"users array present\", () => {",
+                      "  pm.expect(pm.response.json()).to.have.property('users');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2.12 GET /api/users — customer token → 403 (no admin role)",
+              "description": "Acquire a ROPC token for customer-user before running.",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
+                ],
+                "url": "{{api_url}}/api/users"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));",
+                      "pm.test(\"detail = Required role: admin\", () => {",
+                      "  pm.expect(pm.response.json().detail).to.equal('Required role: admin');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Part 3 — Scopes (read:accounts)",
+      "description": "Run after Step 3.1 (/api/balances endpoint added to core-banking-api).\n\nKey concept: /api/balances requires BOTH the 'customer' realm role AND the 'read:accounts' scope. A token missing either check returns 403 with a different error message.\n\nFor 3.3: request the scope explicitly by adding 'read:accounts' to the ROPC scope field in folder 0.",
+      "item": [
+
+        {
+          "name": "3.1 GET /api/balances — customer token (no read:accounts scope) → 403",
+          "description": "Acquire a ROPC token for customer-user with scope 'openid profile email' (no read:accounts). The role check passes but the scope check fails.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"detail = Required scope: read:accounts\", () => {",
+                  "  pm.expect(pm.response.json().detail).to.equal('Required scope: read:accounts');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "3.2 GET /api/balances — admin token (no customer role) → 403",
+          "description": "Acquire a ROPC token for admin-user. admin-user has the admin role but not customer. The role check fails before the scope check is reached.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"detail = Required role: customer\", () => {",
+                  "  pm.expect(pm.response.json().detail).to.equal('Required role: customer');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "3.3 GET /api/balances — customer token WITH read:accounts → 200",
+          "description": "Acquire a ROPC token for customer-user with scope 'openid profile email read:accounts'. Requires banking-app-spa to have read:accounts assigned as a client scope in Keycloak (Step 3.5).",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK — role + scope both satisfied\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"balances object present\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('balances');",
+                  "  pm.expect(json.balances).to.have.property('checking');",
+                  "  pm.expect(json.balances).to.have.property('savings');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "3.4 GET /api/balances — no token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{api_url}}/api/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"401 Unauthorized (no token)\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "3.5 GET /api/stocks — service token (M2M, no user identity) → 200",
+          "description": "Acquire a client_credentials token (folder 0) before running. Confirms that trading-app-service can call /api/stocks, with no user involved. The service token must carry aud: 'core-banking-api'.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/stocks"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK — M2M access confirmed\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"stocks array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('stocks');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Part 4 — Full Scope Allowed",
+      "description": "These three requests must be run in sequence with a Keycloak config change between each one. Before each request, acquire a fresh ROPC token for alice (username=alice, password=alice) via folder 0.\n\n1. Run 4.1 first (Full Scope Allowed = ON, default state) — alice's token contains both customer + admin.\n2. Disable Full Scope Allowed in Keycloak (Clients → banking-app-spa → Client scopes tab), re-run folder 0 for alice, then run 4.2 — token now has no roles → 403.\n3. Add the 'customer' role scope to banking-app-spa, re-run folder 0 for alice, then run 4.3 — token now has only customer → 200.\n\nKey concept: (roles in token) = (roles held by user) ∩ (roles the client is allowed to expose)",
+      "item": [
+
+        {
+          "name": "4.1 GET /api/accounts — alice (Full Scope Allowed ON) → 200",
+          "description": "Config state: Full Scope Allowed = ON (default). alice holds customer + admin. Both appear in the token. The customer role satisfies the /api/accounts check.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/accounts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK — both roles in token, customer satisfied\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"accounts array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('accounts');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "4.2 GET /api/accounts — alice (Full Scope Allowed OFF) → 403",
+          "description": "⚠️ Before running: disable Full Scope Allowed in Keycloak (Clients → banking-app-spa → Client scopes tab → toggle off). Then re-run folder 0 for alice to fetch a fresh token.\n\nExpected: no roles appear in realm_access.roles → 403 Required role: customer.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/accounts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"403 Forbidden — no roles in token (Full Scope Allowed OFF)\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"detail = Required role: customer\", () => {",
+                  "  pm.expect(pm.response.json().detail).to.equal('Required role: customer');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+
+        {
+          "name": "4.3 GET /api/accounts — alice (customer scope re-granted) → 200",
+          "description": "⚠️ Before running: with Full Scope Allowed still OFF, add the 'customer' realm role scope to banking-app-spa (Clients → banking-app-spa → Client scopes → Add client scope → select customer). Then re-run folder 0 for alice.\n\nExpected: token contains ONLY 'customer' (not 'admin') → 200. alice's admin role is absent — least privilege enforced.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{api_url}}/api/accounts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"200 OK — only customer role in token\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"accounts array present\", () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('accounts');",
+                  "});",
+                  "console.log(\"Verify manually: decode the access_token at jwt.io and confirm realm_access.roles contains only 'customer', not 'admin'.\");"
+                ]
+              }
+            }
+          ]
+        }
+
+      ]
+    }
+
+  ]
+}

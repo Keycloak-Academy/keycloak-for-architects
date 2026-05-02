@@ -1,0 +1,21 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.nupkg
+*.snupkg
+
+# Node.js
+node_modules/
+dist/
+.env
+*.env.local
+.parcel-cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+.claude

@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start: core-banking-api",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": { "cwd": "${workspaceFolder}/core-banking-api" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start: banking-app",
+      "type": "shell",
+      "command": "npm install --silent && npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/banking-app",
+        "shell": { "executable": "cmd.exe", "args": ["/c"] }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start: trading-app",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": { "cwd": "${workspaceFolder}/trading-app" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start All Demo Apps",
+      "dependsOn": [
+        "Start: core-banking-api",
+        "Start: banking-app",
+        "Start: trading-app"
+      ],
+      "dependsOrder": "parallel",
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}
