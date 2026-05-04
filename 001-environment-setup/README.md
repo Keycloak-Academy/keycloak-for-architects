@@ -223,21 +223,79 @@ Keycloak reads `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` f
 
 > Estimated time: 3–5 min | Tools: terminal
 
-**Goal:** Create a local shell alias that runs `kcadm.sh` inside a transient Docker container so you can manage Keycloak from the host without installing Java.
+**Goal:** Create a local shell alias that runs `kcadm.sh` against the Keycloak container so you can manage Keycloak from the host without installing Java.
 
 **Observable outcome:**
 - Running `kcadm config credentials --server http://localhost:8080 --realm master --user admin --password admin` succeeds and stores a token
 - `kcadm get realms` returns the list of realms
 
+Two Docker-based approaches are shown below. Pick one:
+
+| Approach | When to use |
+|---|---|
+| **A. `docker exec` into the running container** | Recommended. Reuses the `keycloak` container from Task 2, no networking quirks, token persists inside the container. |
+| **B. Transient `docker run` with a host volume** | Use when the Keycloak server runs elsewhere (remote host, different container, bare-metal) and you only need the CLI locally. |
+
 <details>
 <summary>Hint — volume mount</summary>
 
-The CLI stores authentication tokens in a local directory. Mount that directory into the container so the token persists across invocations.
+The CLI stores authentication tokens in a local directory. For Approach B, mount that directory into the container so the token persists across invocations. For Approach A, the token stays inside the long-running container's filesystem and persists automatically until the container is removed.
 
 </details>
 
 <details>
-<summary>Solution — step-by-step walkthrough</summary>
+<summary>Solution A — `docker exec` against the running Keycloak container</summary>
+
+This approach assumes the `keycloak` container from Task 2 is running. Because the CLI executes inside the same container as the server, it talks to `http://localhost:8080` regardless of host OS.
+
+**Linux / macOS:**
+
+1. Define the alias:
+
+   ```bash
+   alias kcadm="docker exec -i keycloak /opt/keycloak/bin/kcadm.sh"
+   ```
+
+2. Authenticate:
+
+   ```bash
+   kcadm config credentials --server http://localhost:8080 --realm master --user admin --password admin
+   ```
+
+3. Verify:
+
+   ```bash
+   kcadm get realms
+   ```
+
+**Windows (PowerShell):**
+
+1. Define a PowerShell function:
+
+   ```powershell
+   function kcadm {
+       docker exec -i keycloak /opt/keycloak/bin/kcadm.sh @args
+   }
+   ```
+
+2. Authenticate:
+
+   ```powershell
+   kcadm config credentials --server http://localhost:8080 --realm master --user admin --password admin
+   ```
+
+3. Verify:
+
+   ```powershell
+   kcadm get realms
+   ```
+
+> **Note:** The stored token lives in the container at `/opt/keycloak/.keycloak/kcadm.config`. It is lost when the container is removed (`docker rm keycloak`); re-run `kcadm config credentials` after recreating the container.
+
+</details>
+
+<details>
+<summary>Solution B — Transient `docker run` with a host volume</summary>
 
 **Linux / macOS:**
 

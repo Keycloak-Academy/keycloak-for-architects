@@ -51,7 +51,7 @@ Understanding the account console is valuable for developers because it represen
 
 **Observable outcome:**
 - The realm name appears in the top-left corner next to **Current realm**
-- The **General**, **Tokens**, and **Keys** tabs are visible and populated
+- Under **Realm settings**, the **General**, **Tokens**, and **Keys** tabs are visible and populated
 - You can identify the token lifespan and the active signing algorithm
 
 <details>
@@ -64,7 +64,7 @@ Look for the realm selector near the top-left of the admin console. If you are o
 <details>
 <summary>Hint — what matters for later labs</summary>
 
-Pay attention to the **Tokens** tab values (access token lifespan, refresh token lifespan) and the **Keys** tab active signing key. These directly affect how your applications validate tokens and when users must re-authenticate.
+Under **Realm settings**, pay attention to the **Tokens** tab values (access token lifespan, refresh token lifespan) and the **Keys** tab active signing key. These directly affect how your applications validate tokens and when users must re-authenticate.
 
 </details>
 

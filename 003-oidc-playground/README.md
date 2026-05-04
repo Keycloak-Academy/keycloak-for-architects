@@ -213,9 +213,8 @@ The mapper bridges a user attribute (stored in Keycloak) to a token claim (consu
 <summary>Solution — step-by-step walkthrough</summary>
 
 1. Add a custom user attribute:
-   - Admin console → **Users** → select your test user → **Attributes**
-   - Key: `badge_num`
-   - Value: `myvalue`
+   - Admin console → **Realm settings** → select your test user → **User profile** and then click on **Create attribute** :
+   - Attribute [Name]: `badge_num`
    - Click **Add** → **Save**
 
 2. Create a client scope:
