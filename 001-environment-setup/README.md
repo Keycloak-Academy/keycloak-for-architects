@@ -116,13 +116,25 @@ Binding to `127.0.0.1:8080` limits exposure to your local machine. If another se
 
 1. Run the container:
 
-   ```bash
-   docker run --name keycloak -p 127.0.0.1:8080:8080 \
-     -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
-     -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
-     quay.io/keycloak/keycloak:26.5.0 \
-     start-dev
-   ```
+   - Linux / macOS:
+
+     ```bash
+     docker run --name keycloak -p 127.0.0.1:8080:8080 \
+       -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+       -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+       quay.io/keycloak/keycloak:26.5.0 \
+       start-dev
+     ```
+
+   - Windows (PowerShell):
+
+     ```powershell
+     docker run --name keycloak -p 127.0.0.1:8080:8080 `
+       -e KC_BOOTSTRAP_ADMIN_USERNAME=admin `
+       -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin `
+       quay.io/keycloak/keycloak:26.5.0 `
+       start-dev
+     ```
 
 2. Wait for the log line confirming the server started.
 3. Open `http://localhost:8080` in a browser.
@@ -130,7 +142,9 @@ Binding to `127.0.0.1:8080` limits exposure to your local machine. If another se
    - Username: `admin`
    - Password: `admin`
 
-> **Note:** To stop and remove the container later: `docker stop keycloak && docker rm keycloak`.
+> **Note:** To stop and remove the container later:
+> - Linux / macOS: `docker stop keycloak && docker rm keycloak`
+> - Windows: `docker stop keycloak; docker rm keycloak`
 
 </details>
 
@@ -225,6 +239,8 @@ The CLI stores authentication tokens in a local directory. Mount that directory 
 <details>
 <summary>Solution — step-by-step walkthrough</summary>
 
+**Linux / macOS:**
+
 1. Create a directory for CLI state:
 
    ```bash
@@ -251,6 +267,43 @@ The CLI stores authentication tokens in a local directory. Mount that directory 
 
 > **Note:** Add the alias to your shell profile (e.g., `~/.bashrc`) if you want it available in new terminals.
 
+---
+
+**Windows (PowerShell):**
+
+1. Create a directory for CLI state:
+
+   ```powershell
+   New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.acme\.keycloak"
+   ```
+
+2. Define a PowerShell function:
+
+   ```powershell
+   function kcadm {
+       docker run --rm -i `
+         -v "$env:USERPROFILE\.acme\.keycloak:/opt/keycloak/.keycloak" `
+         --entrypoint /opt/keycloak/bin/kcadm.sh `
+         quay.io/keycloak/keycloak:26.5.0 @args
+   }
+   ```
+
+3. Authenticate:
+
+   ```powershell
+   kcadm config credentials --server http://host.docker.internal:8080 --realm master --user admin --password admin
+   ```
+
+   > **Note:** On Windows, Docker Desktop routes host-to-container traffic via `host.docker.internal`, not `localhost`.
+
+4. Verify:
+
+   ```powershell
+   kcadm get realms
+   ```
+
+> **Note:** To make the function available in new terminals, add it to your PowerShell profile: `notepad $PROFILE`.
+
 </details>
 
 ---
@@ -265,8 +318,13 @@ Verify that all of the following are true before marking this lab complete:
 - [ ] (Optional) The `kcadm` alias returns realm data without errors
 
 ```bash
-# Quick health check (local Docker)
+# Quick health check (local Docker — Linux / macOS)
 curl -s http://localhost:8080 | grep -i keycloak
+```
+
+```powershell
+# Quick health check (local Docker — Windows PowerShell)
+(Invoke-WebRequest -Uri http://localhost:8080).Content | Select-String keycloak
 ```
 
 ---
