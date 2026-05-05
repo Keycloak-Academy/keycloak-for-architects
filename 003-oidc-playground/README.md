@@ -302,10 +302,19 @@ The UserInfo endpoint is part of OIDC. If the authorization request omits `openi
    - In Step 5, copy the raw `access_token`
    - Run:
 
-     ```bash
-     curl -s https://labs-sso.keycloak.academy/realms/{realm}/protocol/openid-connect/userinfo \
-       -H "Authorization: Bearer <access_token>"
-     ```
+     - macOS / Linux:
+
+       ```bash
+       curl -s https://labs-sso.keycloak.academy/realms/{realm}/protocol/openid-connect/userinfo \
+         -H "Authorization: Bearer <access_token>"
+       ```
+
+     - Windows (PowerShell):
+
+       ```powershell
+       curl.exe -s https://labs-sso.keycloak.academy/realms/{realm}/protocol/openid-connect/userinfo `
+         -H "Authorization: Bearer <access_token>"
+       ```
 
      (Use `http://localhost:8080` for local.)
 
@@ -346,12 +355,25 @@ Verify that all of the following are true before marking this lab complete:
 - [ ] Realm roles appear in the ID token after enabling **Add to ID token** on the `realm roles` mapper
 - [ ] The UserInfo endpoint returns user claims when called with the access token
 
+**macOS / Linux:**
+
 ```bash
 # Optional: refresh token test via curl
 curl -s -X POST https://labs-sso.keycloak.academy/realms/{realm}/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=refresh_token" \
   -d "refresh_token=<refresh_token>" \
+  -d "client_id=playground-oidc"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Optional: refresh token test via curl
+curl.exe -s -X POST https://labs-sso.keycloak.academy/realms/{realm}/protocol/openid-connect/token `
+  -H "Content-Type: application/x-www-form-urlencoded" `
+  -d "grant_type=refresh_token" `
+  -d "refresh_token=<refresh_token>" `
   -d "client_id=playground-oidc"
 ```
 

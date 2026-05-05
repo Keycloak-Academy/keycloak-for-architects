@@ -52,11 +52,11 @@ Go to **Realm roles → Create role** and create the following roles:
 
 #### 2 — Clients
 
-##### `banking-app-spa` — public client (React SPA, port 3010)
+##### `banking-app` — public client (React SPA, port 3010)
 
 1. **Clients → Create client**
    - Client type: `OpenID Connect`
-   - Client ID: `banking-app-spa`
+   - Client ID: `banking-app`
 2. **Capability config**
    - Client authentication: **OFF** (public client)
    - Standard flow: **ON**
@@ -152,7 +152,7 @@ By default, Keycloak creates clients with **Full Scope Allowed = on**. This mean
 **Goal:** Configure the Audience mapper in Keycloak and enable global audience validation in `core-banking-api` so that only tokens explicitly issued for the API are accepted.
 
 **Observable outcome:**
-- Tokens from `banking-app-spa` and `trading-app` include `core-banking-api` in the `aud` claim
+- Tokens from `banking-app` and `trading-app` include `core-banking-api` in the `aud` claim
 - Tokens from a client without the audience mapper are rejected with 401 at the middleware level
 - `GET /api/stocks` with no token returns 401
 
@@ -177,8 +177,8 @@ In the JWT Bearer options, there is a validation parameter that controls whether
 
 By default, Keycloak does not add your API's identifier to the `aud` claim. You need to add an Audience Protocol Mapper for each client that calls the API:
 
-**For `banking-app-spa`:**
-1. Admin console → **Clients → banking-app-spa → Client scopes** tab → click `banking-app-spa-dedicated`
+**For `banking-app`:**
+1. Admin console → **Clients → banking-app → Client scopes** tab → click `banking-app-dedicated`
 2. **Mappers → Configure a new mapper → Audience**
 3. Set **Included Client Audience** = `core-banking-api`, name = `core-banking-api audience`
 4. Save
@@ -205,8 +205,10 @@ o.TokenValidationParameters = new TokenValidationParameters
 
 ### 1.3 — Verify
 
+**macOS / Linux:**
+
 ```bash
-# Token from banking-app-spa or trading-app (aud includes "core-banking-api")
+# Token from banking-app or trading-app (aud includes "core-banking-api")
 # → 200 OK
 curl http://localhost:3011/api/stocks \
   -H "Authorization: Bearer {valid-token-with-audience}"
@@ -218,6 +220,23 @@ curl http://localhost:3011/api/stocks \
 
 # No token → 401 Unauthorized
 curl http://localhost:3011/api/stocks
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Token from banking-app or trading-app (aud includes "core-banking-api")
+# → 200 OK
+curl.exe http://localhost:3011/api/stocks `
+  -H "Authorization: Bearer {valid-token-with-audience}"
+
+# Token from a client without the audience mapper (aud missing "core-banking-api")
+# → 401 Unauthorized {"error":"Unauthorized","detail":"Token audience is invalid..."}
+curl.exe http://localhost:3011/api/stocks `
+  -H "Authorization: Bearer {wrong-audience-token}"
+
+# No token → 401 Unauthorized
+curl.exe http://localhost:3011/api/stocks
 ```
 
 </details>
@@ -293,7 +312,7 @@ Also add port 3020 (the upcoming `my-savings` app) to the CORS origins:
 - `admin` token (no `customer` role) → 403 `Required role: customer`
 - `customer` token **with** `read:accounts` scope → 200
 
-> **Note:** At this stage you can obtain a token from `banking-app-spa` to test the 200 case — you will update that app to request `read:accounts` in Step 2.5. After Step 2.3 you will also confirm this with `my-savings` after explicit consent.
+> **Note:** At this stage you can obtain a token from `banking-app` to test the 200 case — you will update that app to request `read:accounts` in Step 2.5. After Step 2.3 you will also confirm this with `my-savings` after explicit consent.
 
 This endpoint now requires **two independent checks**: a user permission (role) and an application-level permission (scope). The role is assigned by an administrator; the scope is granted either automatically for trusted first-party apps, or through explicit user consent for third-party apps — as you will see in the steps that follow.
 
@@ -314,7 +333,7 @@ This endpoint now requires **two independent checks**: a user permission (role) 
 
 **c) Use a shared client scope for the audience mapper — don't repeat yourself**
 
-You've now created three clients that all call `core-banking-api`: `banking-app-spa`, `trading-app`, and `my-savings-app`. In Part 1 you added the same Audience Protocol Mapper individually to the first two. Adding it again to `my-savings-app` would work — but this pattern doesn't scale: every new client that calls the API requires the same manual step, and a forgotten mapper produces a 401 with no obvious cause.
+You've now created three clients that all call `core-banking-api`: `banking-app`, `trading-app`, and `my-savings-app`. In Part 1 you added the same Audience Protocol Mapper individually to the first two. Adding it again to `my-savings-app` would work — but this pattern doesn't scale: every new client that calls the API requires the same manual step, and a forgotten mapper produces a 401 with no obvious cause.
 
 The right solution is a **shared client scope**: define the audience mapper once, then assign the scope to any client that needs it. This is exactly how `read:accounts` works — it's a scope that represents access to a specific resource, and clients opt in by being assigned it. The audience mapper for `core-banking-api` deserves the same treatment.
 
@@ -332,7 +351,7 @@ Adding it as **Optional** (not Default) means the audience claim is *not* includ
 
 Log in to `my-savings` and inspect the initial token at [jwt.io](https://jwt.io) — `aud` should **not** contain `core-banking-api`. After clicking "Grant access to balance", inspect the new token — `aud` should now include `core-banking-api`.
 
-> You could also retroactively assign `core-banking-api-audience` to `banking-app-spa` and `trading-app` and remove their per-client mappers — the result is identical.
+> You could also retroactively assign `core-banking-api-audience` to `banking-app` and `trading-app` and remove their per-client mappers — the result is identical.
 
 ### 2.3 — Build my-savings from scratch
 
@@ -488,10 +507,19 @@ export default function DashboardPage() {
 
 Start the app:
 
-```bash
-cd source-initial/my-savings
-npm install && npm start
-```
+- macOS / Linux:
+
+  ```bash
+  cd source-initial/my-savings
+  npm install && npm start
+  ```
+
+- Windows (PowerShell):
+
+  ```powershell
+  cd source-initial/my-savings
+  npm install; npm start
+  ```
 
 ### 2.4 — Walk through the consent flow
 
@@ -508,9 +536,9 @@ Notice what just happened: the API rejected the request until the *application* 
 
 ### 2.5 — Add read:accounts to banking-app (first-party, no consent)
 
-**First, assign `read:accounts` to `banking-app-spa` in Keycloak:**
+**First, assign `read:accounts` to `banking-app` in Keycloak:**
 
-Admin console → **Clients → banking-app-spa → Client scopes** tab → **Add client scope** → select `read:accounts` → add as **Optional**.
+Admin console → **Clients → banking-app → Client scopes** tab → **Add client scope** → select `read:accounts` → add as **Optional**.
 
 > The scope must be assigned to the client before Keycloak will honour requests for it. Without this step the scope is silently omitted from the token and `/api/balances` returns 403 even if the app requests it.
 
@@ -522,7 +550,7 @@ Update `source-initial/banking-app/src/auth/userManager.js` to request `read:acc
 scope: 'openid profile email read:accounts',
 ```
 
-Because `banking-app-spa` has **Consent Required = OFF** in Keycloak, this scope is granted automatically at login — no consent screen appears. This is the correct behaviour for a first-party application that the organisation fully controls and trusts.
+Because `banking-app` has **Consent Required = OFF** in Keycloak, this scope is granted automatically at login — no consent screen appears. This is the correct behaviour for a first-party application that the organisation fully controls and trusts.
 
 Add a `BalancesPanel` component to the dashboard (see `source-complete/banking-app/src/components/BalancesPanel.jsx` for the reference implementation) and wire it into `DashboardPage` alongside the existing `TransactionsPanel`.
 
@@ -538,7 +566,7 @@ Add a `BalancesPanel` component to the dashboard (see `source-complete/banking-a
 
 > Estimated time: 15–20 min | Tools: admin console, browser, curl
 
-**Goal:** Disable Full Scope Allowed on `banking-app-spa`, observe that tokens no longer contain any roles, and then re-grant exactly the `customer` role so that the intersection principle is enforced.
+**Goal:** Disable Full Scope Allowed on `banking-app`, observe that tokens no longer contain any roles, and then re-grant exactly the `customer` role so that the intersection principle is enforced.
 
 **Observable outcome:**
 - With Full Scope Allowed ON: `alice`'s token contains both `customer` and `admin`
@@ -567,13 +595,13 @@ You can assign roles to a client either directly through its client scopes tab o
 
 1. Log in to `banking-app` as `alice` (roles: `customer` and `admin`)
 2. Inspect the access token at [jwt.io](https://jwt.io)
-3. `realm_access.roles` contains both `customer` **and** `admin` — even though `banking-app-spa` only needs `customer` to call `/api/accounts`
+3. `realm_access.roles` contains both `customer` **and** `admin` — even though `banking-app` only needs `customer` to call `/api/accounts`
 
-A leaked `banking-app-spa` token grants admin-level access to the API. That is not intended.
+A leaked `banking-app` token grants admin-level access to the API. That is not intended.
 
 ### 3.2 — Disable Full Scope Allowed
 
-1. Admin console → **Clients → banking-app-spa**
+1. Admin console → **Clients → banking-app**
 2. **Client scopes** tab → turn off **Full Scope Allowed**
 3. Log in again as `alice` and inspect the new token: `realm_access.roles` is now empty
 4. Test: `GET /api/accounts` with this token → 403 (customer role missing from token)
@@ -584,7 +612,7 @@ The app is broken. The next step fixes it correctly.
 
 **Option A — add a role scope directly:**
 
-1. **Clients → banking-app-spa → Client scopes tab → Add client scope**
+1. **Clients → banking-app → Client scopes tab → Add client scope**
 2. Select the `customer` realm role scope (or create one if it doesn't exist: **Client Scopes → Create**, type = Roles, assign the `customer` realm role under the Scope tab)
 3. Log in again: token now contains `customer` only — `admin` is absent
 
@@ -592,20 +620,20 @@ The app is broken. The next step fixes it correctly.
 
 1. **Client Scopes → Create client scope**, name = `customer`, type = optional
 2. Inside the scope → **Scope** tab → **Assign role** → select realm role `customer`
-3. **Clients → banking-app-spa → Client scopes → Add client scope** → add `customer` as optional
+3. **Clients → banking-app → Client scopes → Add client scope** → add `customer` as optional
 4. Request `scope=customer` at login — only the `customer` role will appear in the token
 
 ### 3.4 — Verify the intersection principle
 
-With Full Scope Allowed OFF and only `customer` assigned to `banking-app-spa`:
+With Full Scope Allowed OFF and only `customer` assigned to `banking-app`:
 
-| User | User's roles | Token roles (banking-app-spa) | `/api/accounts` | `/api/users` |
+| User | User's roles | Token roles (banking-app) | `/api/accounts` | `/api/users` |
 |------|-------------|-------------------------------|-----------------|--------------|
 | alice | customer, admin | customer | 200 | 403 |
 | customer-user | customer | customer | 200 | 403 |
 | admin-user | admin | *(empty)* | 403 | 403 |
 
-The intersection principle is enforced: `alice` holds the `admin` role, but `banking-app-spa` is not allowed to see it, so it never reaches the API.
+The intersection principle is enforced: `alice` holds the `admin` role, but `banking-app` is not allowed to see it, so it never reaches the API.
 
 </details>
 
@@ -615,7 +643,7 @@ The intersection principle is enforced: `alice` holds the `admin` role, but `ban
 
 Verify that all of the following are true before marking this lab complete:
 
-- [ ] Token from `banking-app-spa` or `trading-app` includes `core-banking-api` in `aud` claim
+- [ ] Token from `banking-app` or `trading-app` includes `core-banking-api` in `aud` claim
 - [ ] Token without `core-banking-api` audience → 401 at middleware level (before endpoint handler)
 - [ ] `GET /api/balances` with `admin` token (no `customer` role) → 403 `Required role: customer`
 - [ ] `GET /api/balances` with `customer` token but no `read:accounts` scope → 403 `Required scope: read:accounts`
@@ -628,10 +656,20 @@ Verify that all of the following are true before marking this lab complete:
 - [ ] After assigning only `customer` to the client: token contains `customer` only
 - [ ] `GET /api/accounts` → 200; `GET /api/portfolio/repartition` → 403 (intersection principle confirmed)
 
+**macOS / Linux:**
+
 ```bash
 # Quick API verification
 curl -s http://localhost:3011/api/accounts -H "Authorization: Bearer {customer_token}" | jq .
 curl -s http://localhost:3011/api/balances -H "Authorization: Bearer {customer_token}" | jq .
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Quick API verification (jq must be installed; otherwise pipe to ConvertFrom-Json | ConvertTo-Json)
+curl.exe -s http://localhost:3011/api/accounts -H "Authorization: Bearer {customer_token}" | jq .
+curl.exe -s http://localhost:3011/api/balances -H "Authorization: Bearer {customer_token}" | jq .
 ```
 
 ---

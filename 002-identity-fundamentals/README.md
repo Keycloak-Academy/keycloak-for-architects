@@ -232,9 +232,17 @@ The issuer base URL and the admin console URL differ between the shared cloud en
 
 1. Copy the environment file:
 
-   ```bash
-   cp banking-app/.env.example banking-app/.env
-   ```
+   - macOS / Linux:
+
+     ```bash
+     cp banking-app/.env.example banking-app/.env
+     ```
+
+   - Windows (PowerShell):
+
+     ```powershell
+     Copy-Item banking-app/.env.example banking-app/.env
+     ```
 
 2. Edit `banking-app/.env`:
    - Shared cloud:
