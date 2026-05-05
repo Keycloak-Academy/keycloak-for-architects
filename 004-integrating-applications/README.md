@@ -116,14 +116,27 @@ Save, then go to the **Credentials** tab and note the **Client secret**.
 
 Obtain a token using curl (replace `{realm}` and `{secret}`):
 
-```bash
-curl -s -X POST \
-  {issuer}/protocol/openid-connect/token \
-  -d grant_type=client_credentials \
-  -d client_id=core-banking-api-consumer \
-  -d client_secret={secret} \
-  | jq .
-```
+- Linux / macOS:
+
+  ```bash
+  curl -s -X POST \
+    {issuer}/protocol/openid-connect/token \
+    -d grant_type=client_credentials \
+    -d client_id=core-banking-api-consumer \
+    -d client_secret={secret} \
+    | jq .
+  ```
+
+- Windows (PowerShell):
+
+  ```powershell
+  curl.exe -s -X POST `
+    {issuer}/protocol/openid-connect/token `
+    -d grant_type=client_credentials `
+    -d client_id=core-banking-api-consumer `
+    -d client_secret={secret} `
+    | ConvertFrom-Json | ConvertTo-Json -Depth 10
+  ```
 
 You will receive an `access_token`. Inspect it at [jwt.io](https://jwt.io) — notice the `azp` claim (authorised party) contains your client ID, and there is no `sub` claim for a human user.
 
@@ -171,14 +184,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 Restart the API. Calling `GET http://localhost:3011/api/stocks` without a token should now return **401**. Calling it with a valid Bearer token should return **200**.
 
-```bash
-# Should return 401
-curl http://localhost:3011/api/stocks
+- Linux / macOS:
 
-# Should return 200
-curl http://localhost:3011/api/stocks \
-  -H "Authorization: Bearer {access_token}"
-```
+  ```bash
+  # Should return 401
+  curl http://localhost:3011/api/stocks
+
+  # Should return 200
+  curl http://localhost:3011/api/stocks \
+    -H "Authorization: Bearer {access_token}"
+  ```
+
+- Windows (PowerShell):
+
+  ```powershell
+  # Should return 401
+  curl.exe http://localhost:3011/api/stocks
+
+  # Should return 200
+  curl.exe http://localhost:3011/api/stocks `
+    -H "Authorization: Bearer {access_token}"
+  ```
 
 </details>
 
@@ -621,11 +647,21 @@ At any point you can consult `source-complete/` to see the finished implementati
 
 To run the complete solution:
 
-```bash
-cd source-complete/core-banking-api && dotnet run
-cd source-complete/trading-app && dotnet run
-cd source-complete/banking-app && npm install && npm start
-```
+- Linux / macOS:
+
+  ```bash
+  cd source-complete/core-banking-api && dotnet run
+  cd source-complete/trading-app && dotnet run
+  cd source-complete/banking-app && npm install && npm start
+  ```
+
+- Windows (PowerShell):
+
+  ```powershell
+  cd source-complete/core-banking-api; dotnet run
+  cd source-complete/trading-app; dotnet run
+  cd source-complete/banking-app; npm install; npm start
+  ```
 
 Or use the **Start All (complete)** VS Code task.
 
@@ -664,6 +700,8 @@ Verify that all of the following are true before marking this lab complete:
 - [ ] Signing out invalidates the session and redirects to the home page
 - [ ] The `azp` claim in the service account token contains `core-banking-api-consumer`
 
+**Linux / macOS:**
+
 ```bash
 # Quick verification for the API
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3011/api/stocks
@@ -679,6 +717,26 @@ curl -s http://localhost:3011/api/accounts \
 
 curl -s http://localhost:3011/api/accounts \
   -H "Authorization: Bearer {trader_token}" | jq .
+# Expected: 403 {"error":"Forbidden","detail":"Required role: customer"}
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Quick verification for the API
+curl.exe -s -o NUL -w "%{http_code}" http://localhost:3011/api/stocks
+# Expected: 401
+
+curl.exe -s -o NUL -w "%{http_code}" http://localhost:3011/api/stocks `
+  -H "Authorization: Bearer {access_token}"
+# Expected: 200
+
+curl.exe -s http://localhost:3011/api/accounts `
+  -H "Authorization: Bearer {customer_token}" | ConvertFrom-Json | ConvertTo-Json -Depth 10
+# Expected: 200 with accounts array
+
+curl.exe -s http://localhost:3011/api/accounts `
+  -H "Authorization: Bearer {trader_token}" | ConvertFrom-Json | ConvertTo-Json -Depth 10
 # Expected: 403 {"error":"Forbidden","detail":"Required role: customer"}
 ```
 
