@@ -1,0 +1,274 @@
+{
+  "info": {
+    "_postman_id": "collection-tokens-sessions-001",
+    "name": "Tokens & Sessions",
+    "description": "Lab 6 — Managing Tokens and Sessions.\n\n**Before running:**\n1. Select the **Tokens & Sessions** environment\n2. Fill in `realm` (and `client_id` if not using `oidc-playground`)\n3. Run **1 — Get Token (regular)** to populate `access_token` and `refresh_token`\n\n**Request order for each task:**\n- Task 1: run request 1, inspect the response body\n- Task 2: run 1 → wait 60 s → run 3 → run 4\n- Task 3: run 1 after changing session settings, compare `refresh_expires_in`\n- Task 4: run 2, then 5\n- Task 5: run 1, then 6, then revoke in admin console, then 6 again",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "access_token",          "value": "", "type": "string" },
+    { "key": "refresh_token",         "value": "", "type": "string" },
+    { "key": "old_refresh_token",     "value": "", "type": "string" },
+    { "key": "offline_refresh_token", "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "1 — Get Token (regular)",
+      "description": "Password grant (ROPC) — exchanges alice's credentials for an access token and a regular refresh token.\n\nStores `access_token` and `refresh_token` as collection variables.\n\n**Requirement:** Direct Access Grants must be ON for `{{client_id}}` in Keycloak (Clients → {client} → Settings → Capability config).",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "password" },
+            { "key": "client_id",  "value": "{{client_id}}" },
+            { "key": "username",   "value": "{{username}}" },
+            { "key": "password",   "value": "{{password}}" },
+            { "key": "scope",      "value": "openid profile email" }
+          ]
+        },
+        "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+              "pm.test(\"refresh_token present\", () => pm.expect(json.refresh_token).to.be.a('string'));",
+              "pm.test(\"refresh_expires_in is set\", () => pm.expect(json.refresh_expires_in).to.be.above(0));",
+              "pm.collectionVariables.set(\"access_token\",  json.access_token);",
+              "pm.collectionVariables.set(\"refresh_token\", json.refresh_token);",
+              "console.log(\"expires_in:\", json.expires_in, \"s  |  refresh_expires_in:\", json.refresh_expires_in, \"s\");",
+              "console.log(\"scope:\", json.scope);"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "2 — Get Token (offline)",
+      "description": "Password grant with `offline_access` scope — returns an offline refresh token.\n\nKey differences in the response vs request 1:\n- `refresh_expires_in: 0` (offline tokens do not expire based on session idle)\n- `scope` includes `offline_access`\n- The refresh token JWT payload contains `\"typ\": \"Offline\"`\n\nStores the offline refresh token as `offline_refresh_token`.\n\n**Requirement:** `offline_access` must be an assigned scope on `{{client_id}}`.",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "password" },
+            { "key": "client_id",  "value": "{{client_id}}" },
+            { "key": "username",   "value": "{{username}}" },
+            { "key": "password",   "value": "{{password}}" },
+            { "key": "scope",      "value": "openid profile email offline_access" }
+          ]
+        },
+        "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+              "pm.test(\"refresh_expires_in is 0 (offline)\", () => pm.expect(json.refresh_expires_in).to.equal(0));",
+              "pm.test(\"scope includes offline_access\", () => pm.expect(json.scope).to.include('offline_access'));",
+              "pm.collectionVariables.set(\"access_token\",          json.access_token);",
+              "pm.collectionVariables.set(\"offline_refresh_token\", json.refresh_token);",
+              "console.log(\"offline token acquired — refresh_expires_in:\", json.refresh_expires_in);",
+              "console.log(\"scope:\", json.scope);"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "3 — Refresh (valid)",
+      "description": "Exchanges the current `refresh_token` for a new access token and a new refresh token (rotation).\n\nBefore sending, the current `refresh_token` is saved as `old_refresh_token` — use request 4 to demonstrate that replaying it fails.",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type",    "value": "refresh_token" },
+            { "key": "client_id",     "value": "{{client_id}}" },
+            { "key": "refresh_token", "value": "{{refresh_token}}" }
+          ]
+        },
+        "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Save current refresh_token before rotation so request 4 can replay it",
+              "const current = pm.collectionVariables.get(\"refresh_token\");",
+              "pm.collectionVariables.set(\"old_refresh_token\", current);",
+              "console.log(\"saved old_refresh_token\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test(\"new access_token issued\", () => pm.expect(json.access_token).to.be.a('string'));",
+              "pm.test(\"new refresh_token issued\", () => pm.expect(json.refresh_token).to.be.a('string'));",
+              "pm.collectionVariables.set(\"access_token\",  json.access_token);",
+              "pm.collectionVariables.set(\"refresh_token\", json.refresh_token);",
+              "console.log(\"tokens rotated — new access_token and refresh_token stored\");"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "4 — Refresh (replay — expect 400)",
+      "description": "Attempts to reuse `old_refresh_token` (the token that was already consumed by request 3).\n\nExpected response: `400 Bad Request` with `{\"error\": \"invalid_grant\"}`.\n\nThis demonstrates refresh token rotation: each token can only be used once. Run request 3 first.",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type",    "value": "refresh_token" },
+            { "key": "client_id",     "value": "{{client_id}}" },
+            { "key": "refresh_token", "value": "{{old_refresh_token}}" }
+          ]
+        },
+        "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 400 (token already used)\", () => pm.response.to.have.status(400));",
+              "const json = pm.response.json();",
+              "pm.test(\"error is invalid_grant\", () => pm.expect(json.error).to.equal('invalid_grant'));",
+              "console.log(\"Rotation confirmed — replayed token rejected:\", json.error_description);"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "5 — Refresh offline token",
+      "description": "Exchanges the `offline_refresh_token` (set by request 2) for a new access token.\n\nUnlike a regular refresh token, this succeeds even if the SSO session has since expired. The offline refresh token is rotated — a new one is issued and stored.\n\nRun request 2 first to populate `offline_refresh_token`.",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type",    "value": "refresh_token" },
+            { "key": "client_id",     "value": "{{client_id}}" },
+            { "key": "refresh_token", "value": "{{offline_refresh_token}}" }
+          ]
+        },
+        "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/token"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test(\"access_token present\", () => pm.expect(json.access_token).to.be.a('string'));",
+              "pm.test(\"refresh_expires_in still 0 (offline)\", () => pm.expect(json.refresh_expires_in).to.equal(0));",
+              "pm.collectionVariables.set(\"access_token\",          json.access_token);",
+              "pm.collectionVariables.set(\"offline_refresh_token\", json.refresh_token);",
+              "console.log(\"offline token refreshed — refresh_expires_in:\", json.refresh_expires_in);"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "7 — Logout (revoke regular session)",
+      "description": "RP-initiated logout — revokes the regular SSO session by passing the `refresh_token` to the OIDC logout endpoint.\n\nReturns `204 No Content` on success. Only the session associated with the provided `refresh_token` is revoked — the offline session (stored in `offline_refresh_token`) is a separate server-side session and is NOT affected.\n\nAfter running this request:\n- Request 3 (Refresh valid) → `invalid_grant`\n- Request 5 (Refresh offline token) → `200 OK`\n\n> **Contrast with admin 'Log out all sessions':** that action terminates ALL sessions including offline ones. This endpoint is session-specific.",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "client_id",     "value": "{{client_id}}" },
+            { "key": "refresh_token", "value": "{{refresh_token}}" }
+          ]
+        },
+        "url": "{{kc_url}}/realms/{{realm}}/protocol/openid-connect/logout"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 204 (session revoked)\", () => pm.response.to.have.status(204));",
+              "console.log(\"Regular session revoked. offline_refresh_token is unaffected.\");",
+              "console.log(\"Next: run '3 — Refresh (valid)' → expect invalid_grant\");",
+              "console.log(\"Then: run '5 — Refresh offline token' → expect 200 OK\");"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "6 — Decode access token",
+      "description": "Decodes the `access_token` JWT and logs its header and payload to the Postman Console.\n\nThis is a no-op HTTP request (GET to the OIDC discovery endpoint) — all the work is done in the test script, which base64-decodes the stored `access_token` without needing to send it anywhere.\n\nOpen **View → Show Postman Console** to see the decoded claims.\n\n> **Why not use the introspection endpoint?** Token introspection requires client authentication (`client_id` + `client_secret`). Public clients have no secret and cannot authenticate to that endpoint.",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{kc_url}}/realms/{{realm}}/.well-known/openid-configuration"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Decode the stored access token JWT without sending it to any endpoint",
+              "const token = pm.collectionVariables.get(\"access_token\");",
+              "if (!token) { console.error(\"access_token is empty — run request 1 first\"); return; }",
+              "",
+              "function decodeBase64Url(str) {",
+              "  const padded = str.replace(/-/g, '+').replace(/_/g, '/');",
+              "  const pad = padded.length % 4;",
+              "  return JSON.parse(atob(pad ? padded + '==='.slice(pad) : padded));",
+              "}",
+              "",
+              "const parts = token.split('.');",
+              "pm.test(\"access_token has 3 JWT parts\", () => pm.expect(parts).to.have.lengthOf(3));",
+              "",
+              "const header  = decodeBase64Url(parts[0]);",
+              "const payload = decodeBase64Url(parts[1]);",
+              "",
+              "console.log(\"=== JWT Header ===\",  JSON.stringify(header,  null, 2));",
+              "console.log(\"=== JWT Payload ===\", JSON.stringify(payload, null, 2));",
+              "console.log(\"sub:\",  payload.sub);",
+              "console.log(\"exp:\",  new Date(payload.exp * 1000).toISOString(), \"(\"+payload.exp+\")\");",
+              "console.log(\"iat:\",  new Date(payload.iat * 1000).toISOString());",
+              "console.log(\"roles:\", JSON.stringify(payload.realm_access && payload.realm_access.roles));"
+            ]
+          }
+        }
+      ]
+    }
+
+  ]
+}

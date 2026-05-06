@@ -1,0 +1,237 @@
+{
+	"info": {
+		"_postman_id": "5f4dc355-6e70-4f13-adb9-a52773001947",
+		"name": "_ Fine-grained Permissions",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29432365"
+	},
+	"item": [
+		{
+			"name": "Get Token from KC",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var data = pm.response.json();\r",
+							"pm.environment.set(\"KC_TOKEN\", data.access_token);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					},
+					{
+						"key": "X-CSRF-TOKEN",
+						"value": "1",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"value": "YXBwLWF1dGh6LXJlc3Qtc3ByaW5nYm9vdDpzZWNyZXQ=",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "password",
+							"type": "text"
+						},
+						{
+							"key": "username",
+							"value": "jdoe",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "jdoe",
+							"type": "text"
+						},
+						{
+							"key": "client_id",
+							"value": "document-vault",
+							"type": "text"
+						},
+						{
+							"key": "client_secret",
+							"value": "secret",
+							"type": "text"
+						},
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{KC_URL}}/realms/{{KC_REALM}}/protocol/openid-connect/token",
+					"host": [
+						"{{KC_URL}}"
+					],
+					"path": [
+						"realms",
+						"{{KC_REALM}}",
+						"protocol",
+						"openid-connect",
+						"token"
+					]
+				},
+				"description": "Dont forget to change client-secret with yours"
+			},
+			"response": []
+		},
+		{
+			"name": "Request api/admin path",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{KC_TOKEN}}"
+					}
+				],
+				"url": {
+					"raw": "{{APP_URL}}/api/admin",
+					"host": [
+						"{{APP_URL}}"
+					],
+					"path": [
+						"api",
+						"admin"
+					]
+				},
+				"description": "Requires an RPT with Administration Resource + view scope. Run Get RPT first."
+			},
+			"response": []
+		},
+		{
+			"name": "Request /api/documents/* path",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{KC_TOKEN}}"
+					}
+				],
+				"url": {
+					"raw": "{{APP_URL}}/api/documents/1",
+					"host": [
+						"{{APP_URL}}"
+					],
+					"path": [
+						"api",
+						"documents",
+						"1"
+					]
+				},
+				"description": "Requires an RPT with Document Resource + view scope. Run Get RPT first."
+			},
+			"response": []
+		},
+		{
+			"name": "Get RPT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var data = pm.response.json();\r",
+							"pm.environment.set(\"Token\", data.access_token);\r",
+							"pm.environment.set(\"KC_TOKEN\", data.access_token);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{KC_TOKEN}}"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "urn:ietf:params:oauth:grant-type:uma-ticket",
+							"type": "text"
+						},
+						{
+							"key": "audience",
+							"value": "document-vault",
+							"type": "text"
+						},
+						{
+							"key": "permission",
+							"value": "Administration Resource",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "permission",
+							"value": "Document Resource",
+							"type": "text"
+						},
+						{
+							"key": "permission",
+							"value": "User Resource",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "response_include_resource_name",
+							"value": "true",
+							"type": "text"
+						},
+						{
+							"key": "permission",
+							"value": "Document Resource#view",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "{{KC_URL}}/realms/{{KC_REALM}}/protocol/openid-connect/token",
+					"host": [
+						"{{KC_URL}}"
+					],
+					"path": [
+						"realms",
+						"{{KC_REALM}}",
+						"protocol",
+						"openid-connect",
+						"token"
+					]
+				},
+				"description": "Exchanges KC_TOKEN for an RPT. Saves the RPT to both Token and KC_TOKEN so all endpoint requests use it automatically."
+			},
+			"response": []
+		}
+	]
+}

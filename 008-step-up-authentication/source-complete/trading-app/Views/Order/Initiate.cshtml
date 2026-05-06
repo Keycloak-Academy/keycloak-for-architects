@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Buy Shares";
+}
+
+<div class="container" style="max-width:480px">
+  <div class="card">
+    <h1>Buy Shares</h1>
+
+    @if (!ViewBag.HasGold)
+    {
+      <div style="background:#fffde7;border:1px solid #ffe082;padding:16px;border-radius:6px;margin-bottom:20px">
+        <p style="margin-bottom:12px">
+          Placing a buy order requires a higher authentication level (<code>acr=gold</code>).
+          Your current level is insufficient — please verify your identity with a second factor.
+        </p>
+        <a class="btn" href="/Order/StepUp">Verify Identity to Continue</a>
+      </div>
+    }
+    else
+    {
+      <p style="color:#888;margin:8px 0 20px">
+        Identity verified (<code>acr=gold</code>). Fill in the order details below.
+      </p>
+
+      <form method="post" action="/Order/Execute">
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:.85rem;color:#555;margin-bottom:4px">Symbol</label>
+          <select name="symbol" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+            <option value="AAPL">AAPL — Apple</option>
+            <option value="MSFT">MSFT — Microsoft</option>
+            <option value="NVDA">NVDA — Nvidia</option>
+            <option value="TSLA">TSLA — Tesla</option>
+          </select>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:.85rem;color:#555;margin-bottom:4px">Quantity</label>
+          <input name="quantity" type="number" min="1" required placeholder="e.g. 10" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px" />
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="display:block;font-size:.85rem;color:#555;margin-bottom:4px">Order Type</label>
+          <select name="orderType" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+            <option value="market">Market</option>
+            <option value="limit">Limit</option>
+          </select>
+        </div>
+        <button type="submit" style="width:100%">Place Order</button>
+      </form>
+    }
+
+    <p style="margin-top:16px;font-size:.85rem">
+      <a href="/trading/dashboard">&larr; Back to Dashboard</a>
+    </p>
+  </div>
+</div>

@@ -1,0 +1,127 @@
+@using trading_app.Models
+@model TradingDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var name  = User.FindFirst("name")?.Value
+             ?? User.FindFirst("preferred_username")?.Value
+             ?? "Trader";
+    var email = User.FindFirst("email")?.Value ?? "";
+    var roles = User.Claims
+                    .Where(c => c.Type == System.Security.Claims.ClaimTypes.Role)
+                    .Select(c => c.Value)
+                    .ToList();
+}
+
+<div class="container">
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h1>Hello, @name!</h1>
+      <p style="color:#888;margin-top:4px">@email</p>
+      @if (roles.Any())
+      {
+        <div style="margin-top:8px">
+          @foreach (var r in roles)
+          {
+            <span class="badge">@r</span>
+          }
+        </div>
+      }
+    </div>
+    <div style="display:flex;gap:10px">
+      <a class="btn" href="/order/initiate">Buy Shares</a>
+      <a class="btn btn-secondary" href="/logout">Sign out</a>
+    </div>
+  </div>
+
+  @if (ViewBag.CurrentAcr != "gold")
+  {
+    <div class="card" style="background:#fffde7;border:1px solid #ffe082;">
+      <p>Your current authentication level is <strong>@ViewBag.CurrentAcr</strong>.</p>
+      <p>Buying shares requires <strong>gold</strong> — step up to verify your identity with a second factor.</p>
+      <a class="btn" href="@Url.Action("StepUp", "Trading")">Step Up to Gold</a>
+    </div>
+  }
+  else
+  {
+    <div class="card" style="background:#e8f5e9;border:1px solid #a5d6a7;">
+      <p>Authentication level: <strong>gold</strong>. You can place buy orders.</p>
+    </div>
+  }
+
+  <div class="card">
+    <h2>Live Stocks</h2>
+    @if (Model.StocksError is not null)
+    {
+      <p class="error">@Model.StocksError</p>
+    }
+    else if (Model.Stocks.Length == 0)
+    {
+      <p style="color:#aaa;font-size:.9rem">Loading…</p>
+    }
+    else
+    {
+      <table>
+        <thead>
+          <tr><th>Symbol</th><th>Price</th><th>Change</th></tr>
+        </thead>
+        <tbody>
+          @foreach (var item in Model.Stocks)
+          {
+            var json   = System.Text.Json.JsonSerializer.Serialize(item);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var symbol = doc.RootElement.GetProperty("symbol").GetString();
+            var price  = doc.RootElement.GetProperty("currentPrice").GetDouble();
+            var change = doc.RootElement.GetProperty("changePercentage").GetDouble();
+            var cls    = change >= 0 ? "up" : "down";
+            var sign   = change >= 0 ? "+" : "";
+            <tr>
+              <td><strong>@symbol</strong></td>
+              <td>$@price.ToString("N2")</td>
+              <td class="@cls" style="font-weight:600">@sign@change.ToString("N1")%</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <div class="card">
+    <h2>Portfolio</h2>
+    @if (Model.PortfolioError is not null)
+    {
+      <p class="error">@Model.PortfolioError</p>
+    }
+    else if (Model.Portfolio.Length == 0)
+    {
+      <p style="color:#aaa;font-size:.9rem">Loading…</p>
+    }
+    else
+    {
+      <p style="font-size:.85rem;color:#555;margin-bottom:10px">
+        Total value: <strong>$@Model.TotalValue.ToString("N0")</strong>
+      </p>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Value</th><th>%</th></tr>
+        </thead>
+        <tbody>
+          @foreach (var item in Model.Portfolio)
+          {
+            var json = System.Text.Json.JsonSerializer.Serialize(item);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var pname = doc.RootElement.GetProperty("name").GetString();
+            var ptype = doc.RootElement.GetProperty("type").GetString();
+            var pval  = doc.RootElement.GetProperty("currentValue").GetDouble();
+            var ppct  = doc.RootElement.GetProperty("percentage").GetDouble();
+            <tr>
+              <td>@pname</td>
+              <td style="color:#888">@ptype</td>
+              <td>$@pval.ToString("N0")</td>
+              <td>@ppct%</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

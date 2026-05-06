@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = "Order Placed";
+}
+
+<div class="container" style="max-width:480px">
+  <div class="card">
+    <h1>Order Placed</h1>
+    <p style="color:#2e7d32;margin:12px 0 20px;font-weight:600">
+      Your buy order was submitted successfully.
+    </p>
+
+    <div style="background:#f9f9f9;padding:14px;border-radius:6px;font-size:.9rem">
+      <pre style="white-space:pre-wrap;word-break:break-all;margin:0">@ViewBag.Result</pre>
+    </div>
+
+    <p style="margin-top:20px;font-size:.85rem">
+      <a href="/trading/dashboard">&larr; Back to Dashboard</a>
+    </p>
+  </div>
+</div>
