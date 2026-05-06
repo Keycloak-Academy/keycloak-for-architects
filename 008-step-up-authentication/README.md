@@ -247,51 +247,28 @@ The `Max Age` setting on each `Condition - Level of Authentication` condition co
 
 The mapper reads values that Keycloak writes into user session notes when each authenticator completes. Without it, the `amr` claim is absent from all tokens regardless of which flow ran.
 
-**Part D — Verify with a token request**
+**Part D — Verify the mapper with the Evaluate utility**
 
-- macOS / Linux:
+21. Admin console → **Clients** → `trading-app` → **Client Scopes** tab → **Evaluate** sub-tab
+22. In the **User** field, type `alice` and select her from the dropdown
+23. Click **Generated access token** (right-hand pane)
+24. In the **Effective Protocol Mappers** list, confirm an entry named **Authentication Method Reference (AMR)** is present — this proves Part C's mapper is attached to the `trading-app-dedicated` scope and will run for every token issued to this client
+25. In the generated JSON pane, confirm the token renders without errors and contains the expected user claims (`preferred_username: "alice"`, `email`, etc.)
 
-  ```bash
-  # Request silver (password only)
-  curl -X POST "http://localhost:8080/realms/{realm}/protocol/openid-connect/token" \
-    -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "grant_type=password" \
-    -d "client_id=trading-app" \
-    -d "client_secret={secret}" \
-    -d "username=alice" \
-    -d "password=alice" \
-    -d "acr_values=silver"
-  ```
-
-- Windows (PowerShell):
-
-  ```powershell
-  # Request silver (password only)
-  curl.exe -X POST "http://localhost:8080/realms/{realm}/protocol/openid-connect/token" `
-    -H "Content-Type: application/x-www-form-urlencoded" `
-    -d "grant_type=password" `
-    -d "client_id=trading-app" `
-    -d "client_secret={secret}" `
-    -d "username=alice" `
-    -d "password=alice" `
-    -d "acr_values=silver"
-  ```
-Decode the returned `access_token` at [jwt.io](https://jwt.io) and confirm `"acr": "silver"`.
-
-> `acr_values=gold` requires OTP and cannot be satisfied by the password-grant flow alone. The Step Up browser flow in Task 4 demonstrates the full OTP challenge.
+> The Evaluate utility does **not** execute the authentication flow, so the generated token's `acr` and `amr` claims do not reflect a real login (the mapper has no session notes to read from). The end-to-end verification — that a password-only login produces `"acr": "silver"` and `"amr": ["pwd"]` — is performed in Task 2 via a browser login.
 
 </details>
 
 ---
 
-## Task 2 — Set a default authentication level on the Keycloak client
+## Task 2 — Set a default ACR level on the Keycloak client
 
 > Estimated time: 5–10 min | Tools: admin console, browser
 
 **Goal:** Configure the `trading-app` client in Keycloak so that every login request defaults to `silver` (LoA 1) — keeping the ACR policy centralized in the IdP rather than in application code — and verify that `alice` logs in with password only, receiving a token with `"acr": "silver"`.
 
 **Observable outcome:**
-- In the Keycloak admin console, **Clients → trading-app → Advanced** shows **Default Level of Authentication** set to `1`
+- In the Keycloak admin console, **Clients → trading-app → Advanced** shows **Default ACR Level** set to `1`
 - Navigating to the trading app redirects to Keycloak, which runs the `Step-Up Browser Flow`
 - Only the username/password screen is presented — no OTP form
 - After login, the app shows the dashboard; the ID token contains `"acr": "silver"` and `"amr": ["pwd"]`
@@ -300,7 +277,7 @@ Decode the returned `access_token` at [jwt.io](https://jwt.io) and confirm `"acr
 <details>
 <summary>Hint — where to find the setting</summary>
 
-The default authentication level is a per-client setting, not a realm-level one. Look in the **Advanced** tab of the `trading-app` client configuration — not in Realm Settings or Authentication Flows.
+The default ACR level is a per-client setting, not a realm-level one. Look in the **Advanced** tab of the `trading-app` client configuration — not in Realm Settings or Authentication Flows.
 
 </details>
 
@@ -316,7 +293,7 @@ The field accepts the numeric LoA value, not the ACR string name. `silver` maps 
 
 1. Admin console → **Clients** → `trading-app` → **Advanced** tab
 2. Scroll to the **Authentication level** section
-3. Set **Default Level of Authentication** to `1`
+3. Set **Default ACR Level** to `1`
 4. Click **Save**
 
 **Verify:**
