@@ -1,0 +1,15 @@
+meta {
+  name: List Resources
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/authz/protection/resource_set
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{KC_PAT}}
+}

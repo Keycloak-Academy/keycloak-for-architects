@@ -1,0 +1,29 @@
+meta {
+  name: Generate token for Alice
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/protocol/openid-connect/token
+  body: form-urlencoded
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:form-urlencoded {
+  grant_type: password
+  username: alice
+  password: alice
+  client_id: document-vault
+  client_secret: {{KC_CLIENT_SECRET}}
+}
+
+script:post-response {
+  var data = res.getBody();
+  bru.setEnvVar("KC_TOKEN", data.access_token);
+}

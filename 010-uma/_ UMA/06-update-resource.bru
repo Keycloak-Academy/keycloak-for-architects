@@ -1,0 +1,32 @@
+meta {
+  name: Update Resource
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/authz/protection/resource_set/{{RESOURCE_ID}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{KC_PAT}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+     "_id" : "{{RESOURCE_ID}}",
+     "name":"Alice Document",
+     "type":"http://www.example.com/rsrcs/socialstream/1",
+     "icon_uri":"https://img.icons8.com/ios/50/document--v1.png",
+     "owner": "alice",
+     "resource_scopes":[
+         "view",
+         "delete",
+         "modify"
+      ],
+      "ownerManagedAccess": true
+  }
+}

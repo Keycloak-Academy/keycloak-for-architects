@@ -1,0 +1,30 @@
+meta {
+  name: Request Access (submit)
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/protocol/openid-connect/token
+  body: form-urlencoded
+  auth: none
+}
+
+docs {
+  Submits a permission request on behalf of the requesting party (jdoe).
+  Returns 403 with error_description=request_denied — same response as a plain denial,
+  but Keycloak persists the request for the resource owner to review and approve.
+  This 403 response is intentional and expected.
+}
+
+headers {
+  Authorization: Bearer {{KC_TOKEN}}
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:form-urlencoded {
+  grant_type: urn:ietf:params:oauth:grant-type:uma-ticket
+  audience: document-vault
+  ticket: {{PERM_TICKET}}
+  submit_request: true
+}

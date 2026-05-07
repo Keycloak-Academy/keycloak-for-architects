@@ -1,0 +1,30 @@
+meta {
+  name: Get Token from KC
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/protocol/openid-connect/token
+  body: form-urlencoded
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:form-urlencoded {
+  grant_type: password
+  username: jdoe
+  password: jdoe
+  client_id: document-vault
+  client_secret: {{KC_CLIENT_SECRET}}
+  ~grant_type: client_credentials
+}
+
+script:post-response {
+  var data = res.getBody();
+  bru.setEnvVar("KC_TOKEN", data.access_token);
+}

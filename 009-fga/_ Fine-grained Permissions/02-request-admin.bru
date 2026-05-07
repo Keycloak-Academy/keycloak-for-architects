@@ -1,0 +1,15 @@
+meta {
+  name: Request api/admin path
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{APP_URL}}/api/admin
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{KC_TOKEN}}
+}

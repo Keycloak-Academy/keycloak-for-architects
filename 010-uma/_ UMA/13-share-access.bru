@@ -1,0 +1,37 @@
+meta {
+  name: Share Access
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/authz/protection/permission/ticket
+  body: json
+  auth: none
+}
+
+docs {
+  The "requester" field contains jdoe's Keycloak user ID (fc67950d-34f1-48a2-8ba1-3737be4b4c32).
+  This UUID is specific to the lab realm import. If you recreated the realm or jdoe's account
+  was re-created, retrieve the current UUID from the Keycloak Admin Console:
+  Realm Settings > Users > jdoe > Details > ID.
+}
+
+headers {
+  Authorization: Bearer {{KC_PAT}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "resource": "{{RESOURCE_ID}}",
+      "requester": "fc67950d-34f1-48a2-8ba1-3737be4b4c32",
+      "granted": true,
+      "scopeName": "view"
+  }
+}
+
+script:post-response {
+  var data = res.getBody();
+  bru.setEnvVar("TICKET_ID", data[0].id);
+}

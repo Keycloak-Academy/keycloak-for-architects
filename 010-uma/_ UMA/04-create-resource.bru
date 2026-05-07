@@ -1,0 +1,35 @@
+meta {
+  name: Create a user-managed resource
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{KC_URL}}/realms/{{KC_REALM}}/authz/protection/resource_set
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{KC_PAT}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+     "name":"Alice Document",
+     "owner": "alice",
+     "uris": ["/api/documents/1"],
+     "resource_scopes":[
+         "view",
+         "delete",
+         "modify"
+      ],
+      "ownerManagedAccess": true
+  }
+}
+
+script:post-response {
+  var data = res.getBody();
+  bru.setEnvVar("RESOURCE_ID", data._id);
+}

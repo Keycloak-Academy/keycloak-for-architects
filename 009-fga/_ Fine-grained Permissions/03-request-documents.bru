@@ -1,0 +1,15 @@
+meta {
+  name: Request /api/documents/* path
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{APP_URL}}/api/documents/1
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{KC_TOKEN}}
+}
